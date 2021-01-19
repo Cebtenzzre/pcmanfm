@@ -59,12 +59,11 @@ static gboolean show_desktop = FALSE;
 static gboolean desktop_off = FALSE;
 static gboolean desktop_running = FALSE;
 static gboolean one_screen = FALSE;
-/* static gboolean new_tab = FALSE; */
 static gint show_pref = -1;
 static gboolean desktop_pref = FALSE;
 static char* set_wallpaper = NULL;
 static char* wallpaper_mode = NULL;
-static gboolean new_win = FALSE;
+static gboolean new_tab = FALSE;
 #if FM_CHECK_VERSION(1, 0, 2)
 static gboolean find_files = FALSE;
 #endif
@@ -89,7 +88,7 @@ static GOptionEntry opt_entries[] =
                     /* don't translate list of modes in description, please */
     { "wallpaper-mode", '\0', 0, G_OPTION_ARG_STRING, &wallpaper_mode, N_("Set mode of desktop wallpaper. MODE=(color|stretch|fit|crop|center|tile|screen)"), N_("MODE") },
     { "show-pref", '\0', 0, G_OPTION_ARG_INT, &show_pref, N_("Open Preferences dialog on the page N"), N_("N") },
-    { "new-win", 'n', 0, G_OPTION_ARG_NONE, &new_win, N_("Open new window"), NULL },
+    { "new-tab", 'n', 0, G_OPTION_ARG_NONE, &new_tab, N_("Open new tab"), NULL },
 #if FM_CHECK_VERSION(1, 0, 2)
     { "find-files", 'f', 0, G_OPTION_ARG_NONE, &find_files, N_("Open a Find Files window"), NULL },
 #endif
@@ -323,7 +322,7 @@ static gboolean reset_options(void)
     g_free(wallpaper_mode);
     wallpaper_mode = NULL;
     show_pref = -1;
-    new_win = FALSE;
+    new_tab = FALSE;
 #if FM_CHECK_VERSION(1, 0, 2)
     find_files = FALSE;
 #endif
@@ -444,7 +443,7 @@ gboolean pcmanfm_run(gint screen_num)
             {
                 path = fm_path_get_home();
                 win = fm_main_win_add_win(NULL, path);
-                if(new_win && window_role)
+                if(!new_tab && window_role)
                     gtk_window_set_role(GTK_WINDOW(win), window_role);
                 continue;
             }
@@ -489,7 +488,7 @@ gboolean pcmanfm_run(gint screen_num)
             char* cwd = ipc_cwd ? ipc_cwd : g_get_current_dir();
             path = fm_path_new_for_path(cwd);
             win = fm_main_win_add_win(NULL, path);
-            if(new_win && window_role)
+            if(!new_tab && window_role)
                 gtk_window_set_role(GTK_WINDOW(win), window_role);
             fm_path_unref(path);
             g_free(cwd);
@@ -556,18 +555,18 @@ static void move_window_to_desktop(FmMainWin* win, FmDesktop* desktop)
 gboolean pcmanfm_open_folder(GAppLaunchContext* ctx, GList* folder_infos, gpointer user_data, GError** err)
 {
     GList* l = folder_infos;
-    gboolean use_new_win = new_win;
+    gboolean use_new_tab = new_tab;
 
     /* for desktop folder open it in new win if set in config */
-    if (!use_new_win && user_data && FM_IS_DESKTOP(user_data))
-        use_new_win = app_config->desktop_folder_new_win;
-    if(use_new_win)
+    if (use_new_tab && user_data && FM_IS_DESKTOP(user_data))
+        use_new_tab = !app_config->desktop_folder_new_win;
+    if(!use_new_tab)
     {
         FmMainWin *win = fm_main_win_add_win(NULL,
                                 fm_file_info_get_path((FmFileInfo*)l->data));
         if(window_role)
             gtk_window_set_role(GTK_WINDOW(win), window_role);
-        new_win = FALSE;
+        new_tab = TRUE;
         l = l->next;
     }
     for(; l; l=l->next)
